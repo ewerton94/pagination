@@ -72,12 +72,23 @@ def clean_page_sets(page_sets: List[PageSet]) -> List[PageSet]:
     """
     cleaned_page_sets = [page_sets[0]]
     last_index = 0
+
+    # Find limits in the page set
+    min_start = page_sets[0].start
+    max_end = page_sets[-1].end
+
+    # Clean page sets
     for i in range(1, len(page_sets)):
         if page_sets[i - 1].end >= page_sets[i].start - 1:
-            # Keep the last start and update with the new end
+
+            # Keep the last start and update with the new end.
+            start = min(cleaned_page_sets[last_index].start, page_sets[i].start)
+            end = max(cleaned_page_sets[last_index].end, page_sets[i].end)
+
+            # Update page set with minimum start and maximum end.
             cleaned_page_sets[last_index] = PageSet(
-                start=cleaned_page_sets[last_index].start,
-                end=page_sets[i].end
+                start=max(min_start, start),
+                end=min(max_end, end)
             )
         else:
             # Add a new cleaned page set
@@ -98,4 +109,4 @@ def pagination_to_string(page_sets: List[PageSet]):
         page_sets
     )
     printed_pagination = " ... ".join(printed_page_sets)
-    return printed_pagination
+    return printed_pagination.strip()

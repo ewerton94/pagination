@@ -9,9 +9,15 @@ param_list = [
     ((5, 15, 1, 1), '1 ... 4 5 6 ... 15'),
     ((5, 10, 5, 5), '1 2 3 4 5 6 7 8 9 10'),
     ((5, 9999999999999999, 1, 0), '1 ... 5 ... 9999999999999999'),
-    ((3, 5, 0, 0), ' ... 3 ... '),
+    ((3, 5, 0, 0), '... 3 ...'),
     ((3, 5, 0, 10), '1 2 3 4 5'),
     ((3, 5, 10, 0), '1 2 3 4 5'),
+    ((1, 10, 3, 1), '1 2 3 ... 8 9 10'),
+    ((10, 10, 4, 1), '1 2 3 4 ... 7 8 9 10'),
+    ((2, 10, 0, 1), '1 2 3 ...'),
+    ((2, 10, 0, 3), '1 2 3 4 5 ...'),
+    ((9, 10, 0, 1), '... 8 9 10'),
+    ((1, 10, 0, 15), '1 2 3 4 5 6 7 8 9 10'),
 ]
 
 pages_zero_or_negative = [
@@ -59,6 +65,9 @@ class TestPagination(unittest.TestCase):
             with self.subTest():
                 self.assertRaises(Exception, generate_text_pagination, *input_values)
 
+
+class TestCleanPageSets(unittest.TestCase):
+
     def test_clean_page_sets_with_one_start_gap(self):
         """
         Given: A page set list with a gap between the first and the middle page set.
@@ -72,12 +81,12 @@ class TestPagination(unittest.TestCase):
             PageSet(start=5, end=7),
             PageSet(start=6, end=9)
         ]
+        expected_page_sets = [
+            PageSet(start=1, end=2),
+            PageSet(start=5, end=9)
+        ]
         new_page_sets = clean_page_sets(page_sets)
-        self.assertEqual(len(new_page_sets), 2)
-        self.assertEqual(new_page_sets[0].start, 1)
-        self.assertEqual(new_page_sets[0].end, 2)
-        self.assertEqual(new_page_sets[1].start, 5)
-        self.assertEqual(new_page_sets[1].end, 9)
+        self.assertEqual(new_page_sets, expected_page_sets)
 
     def test_clean_page_sets_with_one_end_gap(self):
         """
@@ -92,12 +101,12 @@ class TestPagination(unittest.TestCase):
             PageSet(start=5, end=7),
             PageSet(start=10, end=13)
         ]
+        expected_page_sets = [
+            PageSet(start=1, end=7),
+            PageSet(start=10, end=13)
+        ]
         new_page_sets = clean_page_sets(page_sets)
-        self.assertEqual(len(new_page_sets), 2)
-        self.assertEqual(new_page_sets[0].start, 1)
-        self.assertEqual(new_page_sets[0].end, 7)
-        self.assertEqual(new_page_sets[1].start, 10)
-        self.assertEqual(new_page_sets[1].end, 13)
+        self.assertEqual(new_page_sets, expected_page_sets)
 
     def test_clean_page_sets_with_two_gaps(self):
         """
@@ -112,14 +121,13 @@ class TestPagination(unittest.TestCase):
             PageSet(start=5, end=7),
             PageSet(start=10, end=13)
         ]
+        expected_page_sets = [
+            PageSet(start=1, end=3),
+            PageSet(start=5, end=7),
+            PageSet(start=10, end=13)
+        ]
         new_page_sets = clean_page_sets(page_sets)
-        self.assertEqual(len(new_page_sets), 3)
-        self.assertEqual(new_page_sets[0].start, 1)
-        self.assertEqual(new_page_sets[0].end, 3)
-        self.assertEqual(new_page_sets[1].start, 5)
-        self.assertEqual(new_page_sets[1].end, 7)
-        self.assertEqual(new_page_sets[2].start, 10)
-        self.assertEqual(new_page_sets[2].end, 13)
+        self.assertEqual(new_page_sets, expected_page_sets)
 
     def test_clean_page_sets_with_no_gaps(self):
         """
@@ -134,10 +142,95 @@ class TestPagination(unittest.TestCase):
             PageSet(start=-1, end=15),
             PageSet(start=10, end=16)
         ]
+        expected_page_sets = [
+            PageSet(start=1, end=16),
+        ]
         new_page_sets = clean_page_sets(page_sets)
-        self.assertEqual(len(new_page_sets), 1)
-        self.assertEqual(new_page_sets[0].start, 1)
-        self.assertEqual(new_page_sets[0].end, 16)
+        self.assertEqual(new_page_sets, expected_page_sets)
+
+    def test_clean_page_sets_boundaries_greater_than_around_and_current_page_at_start(self):
+        """
+        Given: A page set list with boundaries greater than around and current page at start.
+
+        When: Cleaning the page sets.
+
+        Then: it should consider the boundaries number.
+        """
+        page_sets = [
+            # current_page = 1; total_pages = 10
+            PageSet(start=1, end=3),  # boundaries = 3
+            PageSet(start=0, end=2),  # around = 1
+            PageSet(start=8, end=10)  # boundaries = 3
+        ]
+        expected_page_sets = [
+            PageSet(start=1, end=3),
+            PageSet(start=8, end=10),
+        ]
+        new_page_sets = clean_page_sets(page_sets)
+        self.assertEqual(new_page_sets, expected_page_sets)
+
+    def test_clean_page_sets_boundaries_greater_than_around_and_current_page_at_end(self):
+        """
+        Given: A page set list with boundaries greater than around and current page at end.
+
+        When: Cleaning the page sets.
+
+        Then: it should consider the boundaries number.
+        """
+        page_sets = [
+            # current_page = 10; total_pages = 10
+            PageSet(start=1, end=3),  # boundaries = 3
+            PageSet(start=9, end=11),  # around = 1
+            PageSet(start=8, end=10)  # boundaries = 3
+        ]
+        expected_page_sets = [
+            PageSet(start=1, end=3),
+            PageSet(start=8, end=10),
+        ]
+        new_page_sets = clean_page_sets(page_sets)
+        self.assertEqual(new_page_sets, expected_page_sets)
+
+    def test_clean_page_sets_boundaries_smaller_than_around_and_current_page_at_start(self):
+        """
+        Given: A page set list with boundaries smaller than around and current page at start.
+
+        When: Cleaning the page sets.
+
+        Then: it should keep the maximum number of pages, starting at page 1.
+        """
+        page_sets = [
+            # current_page = 1; total_pages = 10
+            PageSet(start=1, end=1),  # boundaries = 1
+            PageSet(start=-2, end=4),  # around = 3
+            PageSet(start=10, end=10)  # boundaries = 1
+        ]
+        expected_page_sets = [
+            PageSet(start=1, end=4),
+            PageSet(start=10, end=10),
+        ]
+        new_page_sets = clean_page_sets(page_sets)
+        self.assertEqual(new_page_sets, expected_page_sets)
+
+    def test_clean_page_sets_boundaries_smaller_than_around_and_current_page_at_end(self):
+        """
+        Given: A page set list with boundaries smaller than around and current page at end.
+
+        When: Cleaning the page sets.
+
+        Then: it should keep the maximum number of pages, ending at page 10.
+        """
+        page_sets = [
+            # current_page = 10; total_pages = 10
+            PageSet(start=1, end=1),  # boundaries = 1
+            PageSet(start=7, end=13),  # around = 3
+            PageSet(start=10, end=10)  # boundaries = 3
+        ]
+        expected_page_sets = [
+            PageSet(start=1, end=1),
+            PageSet(start=7, end=10),
+        ]
+        new_page_sets = clean_page_sets(page_sets)
+        self.assertEqual(new_page_sets, expected_page_sets)
 
 
 class TestHelpers(unittest.TestCase):
@@ -155,6 +248,54 @@ class TestHelpers(unittest.TestCase):
         ]
         pagination_string = pagination_to_string(page_sets)
         self.assertEqual(pagination_string, "1 2 3")
+
+    def test_show_only_first_pages(self):
+        """
+        Given: One page set with first pages and another without values to show.
+
+        When: Converting it to string.
+
+        Then: It returns the first pages and ends with ...
+        """
+        page_sets = [
+            PageSet(start=1, end=3),
+            PageSet(start=4, end=3),
+        ]
+        pagination_string = pagination_to_string(page_sets)
+        self.assertEqual(pagination_string, "1 2 3 ...")
+
+    def test_show_only_last_pages(self):
+        """
+        Given: One page set without values to show and another with last pages.
+
+        When: Converting it to string.
+
+        Then: It starts with ... and returns the last pages.
+        """
+        page_sets = [
+            PageSet(start=1, end=0),
+            PageSet(start=3, end=4),
+
+        ]
+        pagination_string = pagination_to_string(page_sets)
+        self.assertEqual(pagination_string, "... 3 4")
+
+    def test_show_only_middle_pages(self):
+        """
+        Given: Two page sets without values to show and another with the middle pages.
+
+        When: Converting it to string.
+
+        Then: It starts with ..., returns the middle pages and ends with ...
+        """
+        page_sets = [
+            PageSet(start=1, end=0),
+            PageSet(start=3, end=4),
+            PageSet(start=6, end=5),
+
+        ]
+        pagination_string = pagination_to_string(page_sets)
+        self.assertEqual(pagination_string, "... 3 4 ...")
 
     def test_two_page_sets(self):
         """
